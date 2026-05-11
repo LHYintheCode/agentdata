@@ -25,6 +25,7 @@ Agentdata is early-stage. The current version supports explicit-path JSONL input
 Current capabilities:
 
 - JSONL parsing
+- Codex rollout parsing from `~/.codex/sessions`
 - Canonical session/message model
 - Local message search
 - JSONL export
@@ -33,7 +34,7 @@ Current capabilities:
 
 Not included yet:
 
-- Automatic source discovery
+- Automatic source discovery for non-Codex tools
 - SQLite/FTS indexing
 - Secret redaction
 - Consent manifests
@@ -85,13 +86,24 @@ agentdata export --path ./samples --format markdown
 agentdata export --path ./samples --format jsonl
 ```
 
+Scan local Codex sessions:
+
+```bash
+agentdata scan --source codex
+agentdata search --source codex "deploy"
+agentdata export --source codex --format markdown > codex-history.md
+```
+
 ## Commands
 
 ```text
 agentdata version
 agentdata scan --path <file-or-directory>
+agentdata scan --source codex [--path <codex-sessions-directory>]
 agentdata search --path <file-or-directory> <query>
+agentdata search --source codex [--path <codex-sessions-directory>] <query>
 agentdata export --path <file-or-directory> --format jsonl|markdown
+agentdata export --source codex [--path <codex-sessions-directory>] --format jsonl|markdown
 ```
 
 ## Data Model
@@ -130,6 +142,7 @@ Future sharing workflows should require explicit consent, redaction, and a machi
 ## Roadmap
 
 - Source adapters for Codex and Claude Code
+- Claude Code source adapter
 - Trae/Cursor/Windsurf local storage investigation
 - SQLite FTS indexing
 - Redaction rules for secrets and personal data

@@ -22,7 +22,7 @@ type jsonlRecord struct {
 }
 
 func ParseJSONLSessions(r io.Reader) ([]model.Session, error) {
-	scanner := bufio.NewScanner(r)
+	scanner := newJSONLScanner(r)
 	sessionsByID := make(map[string]*model.Session)
 	order := make([]string, 0)
 	lineNumber := 0
@@ -83,6 +83,12 @@ func ParseJSONLSessions(r io.Reader) ([]model.Session, error) {
 		sessions = append(sessions, *sessionsByID[id])
 	}
 	return sessions, nil
+}
+
+func newJSONLScanner(r io.Reader) *bufio.Scanner {
+	scanner := bufio.NewScanner(r)
+	scanner.Buffer(make([]byte, 64*1024), 16*1024*1024)
+	return scanner
 }
 
 func parseTimestamp(value string) (time.Time, error) {

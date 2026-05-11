@@ -47,11 +47,12 @@ func runScan(args []string, stdout io.Writer, stderr io.Writer) int {
 	flags := flag.NewFlagSet("scan", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	path := flags.String("path", "", "file or directory containing JSONL records")
+	sourceName := flags.String("source", "jsonl", "input source: jsonl or codex")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
 
-	sessions, err := loadSessions(*path)
+	sessions, err := loadSessions(*sourceName, *path)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1
@@ -64,6 +65,7 @@ func runSearch(args []string, stdout io.Writer, stderr io.Writer) int {
 	flags := flag.NewFlagSet("search", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	path := flags.String("path", "", "file or directory containing JSONL records")
+	sourceName := flags.String("source", "jsonl", "input source: jsonl or codex")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
@@ -73,7 +75,7 @@ func runSearch(args []string, stdout io.Writer, stderr io.Writer) int {
 		return 2
 	}
 
-	sessions, err := loadSessions(*path)
+	sessions, err := loadSessions(*sourceName, *path)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1
@@ -88,12 +90,13 @@ func runExport(args []string, stdout io.Writer, stderr io.Writer) int {
 	flags := flag.NewFlagSet("export", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	path := flags.String("path", "", "file or directory containing JSONL records")
+	sourceName := flags.String("source", "jsonl", "input source: jsonl or codex")
 	format := flags.String("format", "jsonl", "export format: jsonl or markdown")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
 
-	sessions, err := loadSessions(*path)
+	sessions, err := loadSessions(*sourceName, *path)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1
@@ -115,12 +118,13 @@ func runExport(args []string, stdout io.Writer, stderr io.Writer) int {
 	return 0
 }
 
-func loadSessions(path string) ([]model.Session, error) {
-	if strings.TrimSpace(path) == "" {
-		return nil, errors.New("--path is required")
+func loadSessions(sourceName string, path string) ([]model.Session, error) {
+	resolvedPath, err := resolveSourcePath(sourceName, path)
+	if err != nil {
+		return nil, err
 	}
 
-	files, err := jsonlFiles(path)
+	files, err := sourceFiles(resolvedPath, sourceName)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +135,7 @@ func loadSessions(path string) ([]model.Session, error) {
 		if err != nil {
 			return nil, err
 		}
-		parsed, parseErr := source.ParseJSONLSessions(opened)
+		parsed, parseErr := parseSessions(sourceName, opened, file)
 		closeErr := opened.Close()
 		if parseErr != nil {
 			return nil, fmt.Errorf("%s: %w", file, parseErr)
@@ -144,7 +148,39 @@ func loadSessions(path string) ([]model.Session, error) {
 	return sessions, nil
 }
 
-func jsonlFiles(path string) ([]string, error) {
+func resolveSourcePath(sourceName string, path string) (string, error) {
+	if strings.TrimSpace(path) != "" {
+		return path, nil
+	}
+	if sourceName == "codex" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		return filepath.Join(home, ".codex", "sessions"), nil
+	}
+	return "", errors.New("--path is required")
+}
+
+func parseSessions(sourceName string, reader io.Reader, file string) ([]model.Session, error) {
+	switch sourceName {
+	case "jsonl":
+		return source.ParseJSONLSessions(reader)
+	case "codex":
+		session, err := source.ParseCodexRollout(reader, file)
+		if err != nil {
+			return nil, err
+		}
+		if len(session.Messages) == 0 {
+			return nil, nil
+		}
+		return []model.Session{session}, nil
+	default:
+		return nil, fmt.Errorf("unsupported source: %s", sourceName)
+	}
+}
+
+func sourceFiles(path string, sourceName string) ([]string, error) {
 	info, err := os.Stat(path)
 	if err != nil {
 		return nil, err
@@ -161,12 +197,21 @@ func jsonlFiles(path string) ([]string, error) {
 		if entry.IsDir() {
 			return nil
 		}
-		if strings.EqualFold(filepath.Ext(current), ".jsonl") {
+		if matchesSourceFile(current, sourceName) {
 			files = append(files, current)
 		}
 		return nil
 	})
 	return files, err
+}
+
+func matchesSourceFile(path string, sourceName string) bool {
+	switch sourceName {
+	case "codex":
+		return strings.HasPrefix(filepath.Base(path), "rollout-") && strings.EqualFold(filepath.Ext(path), ".jsonl")
+	default:
+		return strings.EqualFold(filepath.Ext(path), ".jsonl")
+	}
 }
 
 func countMessages(sessions []model.Session) int {

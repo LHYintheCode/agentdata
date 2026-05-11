@@ -25,6 +25,7 @@ Agentdata 还处在早期阶段。当前版本支持显式传入路径的 JSONL 
 当前已经支持：
 
 - JSONL 解析
+- 从 `~/.codex/sessions` 解析 Codex rollout
 - 统一的 session/message 数据模型
 - 本地消息搜索
 - JSONL 导出
@@ -33,7 +34,7 @@ Agentdata 还处在早期阶段。当前版本支持显式传入路径的 JSONL 
 
 暂未包含：
 
-- 自动发现各工具的本地数据路径
+- 非 Codex 工具的自动发现
 - SQLite/FTS 索引
 - secret 脱敏
 - 授权 manifest
@@ -85,13 +86,24 @@ agentdata export --path ./samples --format markdown
 agentdata export --path ./samples --format jsonl
 ```
 
+扫描本机 Codex sessions：
+
+```bash
+agentdata scan --source codex
+agentdata search --source codex "deploy"
+agentdata export --source codex --format markdown > codex-history.md
+```
+
 ## 命令
 
 ```text
 agentdata version
 agentdata scan --path <file-or-directory>
+agentdata scan --source codex [--path <codex-sessions-directory>]
 agentdata search --path <file-or-directory> <query>
+agentdata search --source codex [--path <codex-sessions-directory>] <query>
 agentdata export --path <file-or-directory> --format jsonl|markdown
+agentdata export --source codex [--path <codex-sessions-directory>] --format jsonl|markdown
 ```
 
 ## 数据模型
@@ -129,7 +141,7 @@ Agentdata 的设计基线是本地所有权：
 
 ## 路线图
 
-- Codex 和 Claude Code source adapter
+- Claude Code source adapter
 - Trae/Cursor/Windsurf 本地存储调研
 - SQLite FTS 索引
 - secret 和个人信息脱敏规则

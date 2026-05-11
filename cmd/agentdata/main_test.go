@@ -33,6 +33,19 @@ func TestRunScanCountsSessionsAndMessages(t *testing.T) {
 	}
 }
 
+func TestRunScanCodexSourceCountsSessionsAndMessages(t *testing.T) {
+	dir := writeSampleCodexRollout(t)
+	var stdout, stderr bytes.Buffer
+
+	code := Run([]string{"scan", "--source", "codex", "--path", dir}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("code = %d, want 0; stderr=%s", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "sessions=1 messages=2") {
+		t.Fatalf("stdout = %q, want scan counts", stdout.String())
+	}
+}
+
 func TestRunSearchPrintsMatches(t *testing.T) {
 	dir := writeSampleJSONL(t)
 	var stdout, stderr bytes.Buffer
@@ -44,6 +57,20 @@ func TestRunSearchPrintsMatches(t *testing.T) {
 	got := stdout.String()
 	if !strings.Contains(got, "s1") || !strings.Contains(got, "Deploy the CLI") {
 		t.Fatalf("stdout = %q, want matching session and text", got)
+	}
+}
+
+func TestRunSearchCodexSourcePrintsMatches(t *testing.T) {
+	dir := writeSampleCodexRollout(t)
+	var stdout, stderr bytes.Buffer
+
+	code := Run([]string{"search", "--source", "codex", "--path", dir, "deploy"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("code = %d, want 0; stderr=%s", code, stderr.String())
+	}
+	got := stdout.String()
+	if !strings.Contains(got, "codex-session-1") || !strings.Contains(got, "Deploy the CLI") {
+		t.Fatalf("stdout = %q, want matching codex session and text", got)
 	}
 }
 
@@ -60,6 +87,23 @@ func TestRunExportMarkdown(t *testing.T) {
 	}
 }
 
+func TestResolveSourcePathDefaultsCodexSessions(t *testing.T) {
+	path, err := resolveSourcePath("codex", "")
+	if err != nil {
+		t.Fatalf("resolveSourcePath returned error: %v", err)
+	}
+	if !strings.HasSuffix(path, filepath.Join(".codex", "sessions")) {
+		t.Fatalf("path = %q, want .codex sessions path", path)
+	}
+}
+
+func TestResolveSourcePathRequiresPathForJSONL(t *testing.T) {
+	_, err := resolveSourcePath("jsonl", "")
+	if err == nil {
+		t.Fatal("resolveSourcePath returned nil error for missing JSONL path")
+	}
+}
+
 func writeSampleJSONL(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
@@ -68,6 +112,20 @@ func writeSampleJSONL(t *testing.T) string {
 		`{"source":"codex","project":"D:\\go_project","session_id":"s1","timestamp":"2026-05-11T01:03:04Z","role":"assistant","content":"Run go test ./..."}`,
 	}, "\n")
 	if err := os.WriteFile(filepath.Join(dir, "sample.jsonl"), []byte(data), 0o600); err != nil {
+		t.Fatalf("write sample: %v", err)
+	}
+	return dir
+}
+
+func writeSampleCodexRollout(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	data := strings.Join([]string{
+		`{"timestamp":"2026-05-11T01:00:00Z","type":"session_meta","payload":{"id":"codex-session-1","cwd":"D:\\go_project"}}`,
+		`{"timestamp":"2026-05-11T01:02:00Z","type":"response_item","payload":{"role":"user","content":[{"type":"input_text","text":"Deploy the CLI"}]}}`,
+		`{"timestamp":"2026-05-11T01:03:00Z","type":"response_item","payload":{"role":"assistant","content":[{"type":"output_text","text":"Run go test ./..."}]}}`,
+	}, "\n")
+	if err := os.WriteFile(filepath.Join(dir, "rollout-2026-05-11T01-00-00-codex-session-1.jsonl"), []byte(data), 0o600); err != nil {
 		t.Fatalf("write sample: %v", err)
 	}
 	return dir
