@@ -1,0 +1,5 @@
+agentdata
+agentdata.exe
+dist/
+tmp/
+*.log
