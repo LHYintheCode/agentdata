@@ -47,7 +47,7 @@ func runScan(args []string, stdout io.Writer, stderr io.Writer) int {
 	flags := flag.NewFlagSet("scan", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	path := flags.String("path", "", "file or directory containing JSONL records")
-	sourceName := flags.String("source", "jsonl", "input source: jsonl or codex")
+	sourceName := flags.String("source", "jsonl", "input source: jsonl, codex, or claude")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
@@ -65,7 +65,7 @@ func runSearch(args []string, stdout io.Writer, stderr io.Writer) int {
 	flags := flag.NewFlagSet("search", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	path := flags.String("path", "", "file or directory containing JSONL records")
-	sourceName := flags.String("source", "jsonl", "input source: jsonl or codex")
+	sourceName := flags.String("source", "jsonl", "input source: jsonl, codex, or claude")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
@@ -90,7 +90,7 @@ func runExport(args []string, stdout io.Writer, stderr io.Writer) int {
 	flags := flag.NewFlagSet("export", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	path := flags.String("path", "", "file or directory containing JSONL records")
-	sourceName := flags.String("source", "jsonl", "input source: jsonl or codex")
+	sourceName := flags.String("source", "jsonl", "input source: jsonl, codex, or claude")
 	format := flags.String("format", "jsonl", "export format: jsonl or markdown")
 	if err := flags.Parse(args); err != nil {
 		return 2
@@ -159,6 +159,13 @@ func resolveSourcePath(sourceName string, path string) (string, error) {
 		}
 		return filepath.Join(home, ".codex", "sessions"), nil
 	}
+	if sourceName == "claude" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		return filepath.Join(home, ".claude", "projects"), nil
+	}
 	return "", errors.New("--path is required")
 }
 
@@ -168,6 +175,15 @@ func parseSessions(sourceName string, reader io.Reader, file string) ([]model.Se
 		return source.ParseJSONLSessions(reader)
 	case "codex":
 		session, err := source.ParseCodexRollout(reader, file)
+		if err != nil {
+			return nil, err
+		}
+		if len(session.Messages) == 0 {
+			return nil, nil
+		}
+		return []model.Session{session}, nil
+	case "claude":
+		session, err := source.ParseClaudeTranscript(reader, file)
 		if err != nil {
 			return nil, err
 		}
@@ -209,6 +225,8 @@ func matchesSourceFile(path string, sourceName string) bool {
 	switch sourceName {
 	case "codex":
 		return strings.HasPrefix(filepath.Base(path), "rollout-") && strings.EqualFold(filepath.Ext(path), ".jsonl")
+	case "claude":
+		return source.IsClaudeTranscriptPath(path)
 	default:
 		return strings.EqualFold(filepath.Ext(path), ".jsonl")
 	}

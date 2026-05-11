@@ -26,6 +26,7 @@ Current capabilities:
 
 - JSONL parsing
 - Codex rollout parsing from `~/.codex/sessions`
+- Claude Code transcript parsing from `~/.claude/projects`
 - Canonical session/message model
 - Local message search
 - JSONL export
@@ -34,7 +35,7 @@ Current capabilities:
 
 Not included yet:
 
-- Automatic source discovery for non-Codex tools
+- Automatic source discovery for non-Codex/Claude tools
 - SQLite/FTS indexing
 - Secret redaction
 - Consent manifests
@@ -94,16 +95,27 @@ agentdata search --source codex "deploy"
 agentdata export --source codex --format markdown > codex-history.md
 ```
 
+Scan local Claude Code sessions:
+
+```bash
+agentdata scan --source claude
+agentdata search --source claude "deploy"
+agentdata export --source claude --format markdown > claude-history.md
+```
+
 ## Commands
 
 ```text
 agentdata version
 agentdata scan --path <file-or-directory>
 agentdata scan --source codex [--path <codex-sessions-directory>]
+agentdata scan --source claude [--path <claude-projects-directory>]
 agentdata search --path <file-or-directory> <query>
 agentdata search --source codex [--path <codex-sessions-directory>] <query>
+agentdata search --source claude [--path <claude-projects-directory>] <query>
 agentdata export --path <file-or-directory> --format jsonl|markdown
 agentdata export --source codex [--path <codex-sessions-directory>] --format jsonl|markdown
+agentdata export --source claude [--path <claude-projects-directory>] --format jsonl|markdown
 ```
 
 ## Data Model
@@ -142,7 +154,6 @@ Future sharing workflows should require explicit consent, redaction, and a machi
 ## Roadmap
 
 - Source adapters for Codex and Claude Code
-- Claude Code source adapter
 - Trae/Cursor/Windsurf local storage investigation
 - SQLite FTS indexing
 - Redaction rules for secrets and personal data

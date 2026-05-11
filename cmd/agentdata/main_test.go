@@ -46,6 +46,19 @@ func TestRunScanCodexSourceCountsSessionsAndMessages(t *testing.T) {
 	}
 }
 
+func TestRunScanClaudeSourceCountsSessionsAndMessages(t *testing.T) {
+	dir := writeSampleClaudeTranscript(t)
+	var stdout, stderr bytes.Buffer
+
+	code := Run([]string{"scan", "--source", "claude", "--path", dir}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("code = %d, want 0; stderr=%s", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "sessions=1 messages=2") {
+		t.Fatalf("stdout = %q, want scan counts", stdout.String())
+	}
+}
+
 func TestRunSearchPrintsMatches(t *testing.T) {
 	dir := writeSampleJSONL(t)
 	var stdout, stderr bytes.Buffer
@@ -74,6 +87,20 @@ func TestRunSearchCodexSourcePrintsMatches(t *testing.T) {
 	}
 }
 
+func TestRunSearchClaudeSourcePrintsMatches(t *testing.T) {
+	dir := writeSampleClaudeTranscript(t)
+	var stdout, stderr bytes.Buffer
+
+	code := Run([]string{"search", "--source", "claude", "--path", dir, "deploy"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("code = %d, want 0; stderr=%s", code, stderr.String())
+	}
+	got := stdout.String()
+	if !strings.Contains(got, "claude-session-1") || !strings.Contains(got, "Find my deploy notes") {
+		t.Fatalf("stdout = %q, want matching claude session and text", got)
+	}
+}
+
 func TestRunExportMarkdown(t *testing.T) {
 	dir := writeSampleJSONL(t)
 	var stdout, stderr bytes.Buffer
@@ -94,6 +121,16 @@ func TestResolveSourcePathDefaultsCodexSessions(t *testing.T) {
 	}
 	if !strings.HasSuffix(path, filepath.Join(".codex", "sessions")) {
 		t.Fatalf("path = %q, want .codex sessions path", path)
+	}
+}
+
+func TestResolveSourcePathDefaultsClaudeProjects(t *testing.T) {
+	path, err := resolveSourcePath("claude", "")
+	if err != nil {
+		t.Fatalf("resolveSourcePath returned error: %v", err)
+	}
+	if !strings.HasSuffix(path, filepath.Join(".claude", "projects")) {
+		t.Fatalf("path = %q, want .claude projects path", path)
 	}
 }
 
@@ -126,6 +163,19 @@ func writeSampleCodexRollout(t *testing.T) string {
 		`{"timestamp":"2026-05-11T01:03:00Z","type":"response_item","payload":{"role":"assistant","content":[{"type":"output_text","text":"Run go test ./..."}]}}`,
 	}, "\n")
 	if err := os.WriteFile(filepath.Join(dir, "rollout-2026-05-11T01-00-00-codex-session-1.jsonl"), []byte(data), 0o600); err != nil {
+		t.Fatalf("write sample: %v", err)
+	}
+	return dir
+}
+
+func writeSampleClaudeTranscript(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	data := strings.Join([]string{
+		`{"type":"user","sessionId":"claude-session-1","cwd":"D:\\go_project","timestamp":"2026-05-11T01:02:00.000Z","message":{"role":"user","content":"Find my deploy notes"}}`,
+		`{"type":"assistant","sessionId":"claude-session-1","cwd":"D:\\go_project","timestamp":"2026-05-11T01:03:00.000Z","message":{"role":"assistant","content":[{"type":"text","text":"The deploy notes are in session 42."}]}}`,
+	}, "\n")
+	if err := os.WriteFile(filepath.Join(dir, "claude-session-1.jsonl"), []byte(data), 0o600); err != nil {
 		t.Fatalf("write sample: %v", err)
 	}
 	return dir

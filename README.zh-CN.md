@@ -26,6 +26,7 @@ Agentdata 还处在早期阶段。当前版本支持显式传入路径的 JSONL 
 
 - JSONL 解析
 - 从 `~/.codex/sessions` 解析 Codex rollout
+- 从 `~/.claude/projects` 解析 Claude Code transcript
 - 统一的 session/message 数据模型
 - 本地消息搜索
 - JSONL 导出
@@ -34,7 +35,7 @@ Agentdata 还处在早期阶段。当前版本支持显式传入路径的 JSONL 
 
 暂未包含：
 
-- 非 Codex 工具的自动发现
+- 非 Codex/Claude 工具的自动发现
 - SQLite/FTS 索引
 - secret 脱敏
 - 授权 manifest
@@ -94,16 +95,27 @@ agentdata search --source codex "deploy"
 agentdata export --source codex --format markdown > codex-history.md
 ```
 
+扫描本机 Claude Code sessions：
+
+```bash
+agentdata scan --source claude
+agentdata search --source claude "deploy"
+agentdata export --source claude --format markdown > claude-history.md
+```
+
 ## 命令
 
 ```text
 agentdata version
 agentdata scan --path <file-or-directory>
 agentdata scan --source codex [--path <codex-sessions-directory>]
+agentdata scan --source claude [--path <claude-projects-directory>]
 agentdata search --path <file-or-directory> <query>
 agentdata search --source codex [--path <codex-sessions-directory>] <query>
+agentdata search --source claude [--path <claude-projects-directory>] <query>
 agentdata export --path <file-or-directory> --format jsonl|markdown
 agentdata export --source codex [--path <codex-sessions-directory>] --format jsonl|markdown
+agentdata export --source claude [--path <claude-projects-directory>] --format jsonl|markdown
 ```
 
 ## 数据模型
@@ -141,7 +153,6 @@ Agentdata 的设计基线是本地所有权：
 
 ## 路线图
 
-- Claude Code source adapter
 - Trae/Cursor/Windsurf 本地存储调研
 - SQLite FTS 索引
 - secret 和个人信息脱敏规则
