@@ -50,3 +50,15 @@ func TestParseJSONLSessionsRejectsInvalidJSON(t *testing.T) {
 		t.Fatal("ParseJSONLSessions returned nil error for invalid JSON")
 	}
 }
+
+func TestParseJSONLSessionsAcceptsUTF8BOM(t *testing.T) {
+	input := strings.NewReader("\ufeff" + `{"source":"codex","project":"D:\\go_project","session_id":"s1","timestamp":"2026-05-11T01:02:03Z","role":"user","content":"Deploy the CLI"}`)
+
+	sessions, err := ParseJSONLSessions(input)
+	if err != nil {
+		t.Fatalf("ParseJSONLSessions returned error: %v", err)
+	}
+	if len(sessions) != 1 || len(sessions[0].Messages) != 1 {
+		t.Fatalf("sessions = %+v, want one session with one message", sessions)
+	}
+}

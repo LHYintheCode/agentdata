@@ -33,6 +33,9 @@ func ParseJSONLSessions(r io.Reader) ([]model.Session, error) {
 		if line == "" {
 			continue
 		}
+		if lineNumber == 1 {
+			line = strings.TrimPrefix(line, "\ufeff")
+		}
 
 		var record jsonlRecord
 		if err := json.Unmarshal([]byte(line), &record); err != nil {
