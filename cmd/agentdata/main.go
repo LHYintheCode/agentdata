@@ -47,7 +47,7 @@ func runScan(args []string, stdout io.Writer, stderr io.Writer) int {
 	flags := flag.NewFlagSet("scan", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	path := flags.String("path", "", "file or directory containing JSONL records")
-	sourceName := flags.String("source", "jsonl", "input source: jsonl, codex, or claude")
+	sourceName := flags.String("source", "jsonl", "input source: jsonl, codex, claude, or all")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
@@ -65,7 +65,7 @@ func runSearch(args []string, stdout io.Writer, stderr io.Writer) int {
 	flags := flag.NewFlagSet("search", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	path := flags.String("path", "", "file or directory containing JSONL records")
-	sourceName := flags.String("source", "jsonl", "input source: jsonl, codex, or claude")
+	sourceName := flags.String("source", "jsonl", "input source: jsonl, codex, claude, or all")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
@@ -90,8 +90,9 @@ func runExport(args []string, stdout io.Writer, stderr io.Writer) int {
 	flags := flag.NewFlagSet("export", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	path := flags.String("path", "", "file or directory containing JSONL records")
-	sourceName := flags.String("source", "jsonl", "input source: jsonl, codex, or claude")
+	sourceName := flags.String("source", "jsonl", "input source: jsonl, codex, claude, or all")
 	format := flags.String("format", "jsonl", "export format: jsonl or markdown")
+	outPath := flags.String("out", "", "write export output to file instead of stdout")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
@@ -102,11 +103,22 @@ func runExport(args []string, stdout io.Writer, stderr io.Writer) int {
 		return 1
 	}
 
+	output := stdout
+	if strings.TrimSpace(*outPath) != "" {
+		file, err := os.Create(*outPath)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		defer file.Close()
+		output = file
+	}
+
 	switch *format {
 	case "jsonl":
-		err = exporter.JSONL(stdout, sessions)
+		err = exporter.JSONL(output, sessions)
 	case "markdown":
-		err = exporter.Markdown(stdout, sessions)
+		err = exporter.Markdown(output, sessions)
 	default:
 		fmt.Fprintf(stderr, "unsupported export format: %s\n", *format)
 		return 2
@@ -119,6 +131,10 @@ func runExport(args []string, stdout io.Writer, stderr io.Writer) int {
 }
 
 func loadSessions(sourceName string, path string) ([]model.Session, error) {
+	if sourceName == "all" {
+		return loadAllSessions(path)
+	}
+
 	resolvedPath, err := resolveSourcePath(sourceName, path)
 	if err != nil {
 		return nil, err
@@ -146,6 +162,64 @@ func loadSessions(sourceName string, path string) ([]model.Session, error) {
 		sessions = append(sessions, parsed...)
 	}
 	return sessions, nil
+}
+
+func loadAllSessions(path string) ([]model.Session, error) {
+	sourcePaths, err := resolveAllSourcePaths(path)
+	if err != nil {
+		return nil, err
+	}
+
+	allSessions := make([]model.Session, 0)
+	for _, sourceName := range []string{"codex", "claude"} {
+		sessions, err := loadSessions(sourceName, sourcePaths[sourceName])
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", sourceName, err)
+		}
+		allSessions = append(allSessions, sessions...)
+	}
+	return allSessions, nil
+}
+
+func resolveAllSourcePaths(path string) (map[string]string, error) {
+	if strings.TrimSpace(path) == "" {
+		codexPath, err := resolveSourcePath("codex", "")
+		if err != nil {
+			return nil, err
+		}
+		claudePath, err := resolveSourcePath("claude", "")
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"codex": codexPath, "claude": claudePath}, nil
+	}
+
+	paths := make(map[string]string)
+	for _, part := range strings.Split(path, ",") {
+		key, value, ok := strings.Cut(part, "=")
+		if !ok {
+			return nil, fmt.Errorf("invalid --path for --source all: %s", part)
+		}
+		key = strings.TrimSpace(key)
+		value = strings.TrimSpace(value)
+		if key != "codex" && key != "claude" {
+			return nil, fmt.Errorf("unsupported source in --path: %s", key)
+		}
+		if value == "" {
+			return nil, fmt.Errorf("empty path for source: %s", key)
+		}
+		paths[key] = value
+	}
+	for _, sourceName := range []string{"codex", "claude"} {
+		if _, ok := paths[sourceName]; !ok {
+			resolved, err := resolveSourcePath(sourceName, "")
+			if err != nil {
+				return nil, err
+			}
+			paths[sourceName] = resolved
+		}
+	}
+	return paths, nil
 }
 
 func resolveSourcePath(sourceName string, path string) (string, error) {

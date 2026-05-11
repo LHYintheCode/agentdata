@@ -59,6 +59,20 @@ func TestRunScanClaudeSourceCountsSessionsAndMessages(t *testing.T) {
 	}
 }
 
+func TestRunScanAllSourceCountsCodexAndClaude(t *testing.T) {
+	codexDir := writeSampleCodexRollout(t)
+	claudeDir := writeSampleClaudeTranscript(t)
+	var stdout, stderr bytes.Buffer
+
+	code := Run([]string{"scan", "--source", "all", "--path", "codex=" + codexDir + ",claude=" + claudeDir}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("code = %d, want 0; stderr=%s", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "sessions=2 messages=4") {
+		t.Fatalf("stdout = %q, want combined scan counts", stdout.String())
+	}
+}
+
 func TestRunSearchPrintsMatches(t *testing.T) {
 	dir := writeSampleJSONL(t)
 	var stdout, stderr bytes.Buffer
@@ -101,6 +115,21 @@ func TestRunSearchClaudeSourcePrintsMatches(t *testing.T) {
 	}
 }
 
+func TestRunSearchAllSourcePrintsMatchesAcrossSources(t *testing.T) {
+	codexDir := writeSampleCodexRollout(t)
+	claudeDir := writeSampleClaudeTranscript(t)
+	var stdout, stderr bytes.Buffer
+
+	code := Run([]string{"search", "--source", "all", "--path", "codex=" + codexDir + ",claude=" + claudeDir, "deploy"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("code = %d, want 0; stderr=%s", code, stderr.String())
+	}
+	got := stdout.String()
+	if !strings.Contains(got, "codex-session-1") || !strings.Contains(got, "claude-session-1") {
+		t.Fatalf("stdout = %q, want matches from codex and claude", got)
+	}
+}
+
 func TestRunExportMarkdown(t *testing.T) {
 	dir := writeSampleJSONL(t)
 	var stdout, stderr bytes.Buffer
@@ -111,6 +140,27 @@ func TestRunExportMarkdown(t *testing.T) {
 	}
 	if !strings.Contains(stdout.String(), "# s1") {
 		t.Fatalf("stdout = %q, want markdown session", stdout.String())
+	}
+}
+
+func TestRunExportWritesOutputFile(t *testing.T) {
+	dir := writeSampleJSONL(t)
+	outPath := filepath.Join(t.TempDir(), "history.md")
+	var stdout, stderr bytes.Buffer
+
+	code := Run([]string{"export", "--path", dir, "--format", "markdown", "--out", outPath}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("code = %d, want 0; stderr=%s", code, stderr.String())
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout = %q, want no stdout when --out is used", stdout.String())
+	}
+	contents, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("read out file: %v", err)
+	}
+	if !strings.Contains(string(contents), "# s1") {
+		t.Fatalf("out file = %q, want markdown session", string(contents))
 	}
 }
 

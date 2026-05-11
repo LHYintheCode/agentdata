@@ -31,6 +31,8 @@ Agentdata 还处在早期阶段。当前版本支持显式传入路径的 JSONL 
 - 本地消息搜索
 - JSONL 导出
 - Markdown 导出
+- 使用 `--source all` 合并扫描 Codex + Claude
+- 使用 `--out` 直接输出到文件
 - 基础 CLI 测试
 
 暂未包含：
@@ -103,6 +105,14 @@ agentdata search --source claude "deploy"
 agentdata export --source claude --format markdown > claude-history.md
 ```
 
+同时扫描 Codex 和 Claude：
+
+```bash
+agentdata scan --source all
+agentdata search --source all "deploy"
+agentdata export --source all --format markdown --out agent-history.md
+```
+
 ## 命令
 
 ```text
@@ -110,12 +120,15 @@ agentdata version
 agentdata scan --path <file-or-directory>
 agentdata scan --source codex [--path <codex-sessions-directory>]
 agentdata scan --source claude [--path <claude-projects-directory>]
+agentdata scan --source all [--path codex=<dir>,claude=<dir>]
 agentdata search --path <file-or-directory> <query>
 agentdata search --source codex [--path <codex-sessions-directory>] <query>
 agentdata search --source claude [--path <claude-projects-directory>] <query>
+agentdata search --source all [--path codex=<dir>,claude=<dir>] <query>
 agentdata export --path <file-or-directory> --format jsonl|markdown
 agentdata export --source codex [--path <codex-sessions-directory>] --format jsonl|markdown
 agentdata export --source claude [--path <claude-projects-directory>] --format jsonl|markdown
+agentdata export --source all [--path codex=<dir>,claude=<dir>] --format jsonl|markdown [--out <file>]
 ```
 
 ## 数据模型

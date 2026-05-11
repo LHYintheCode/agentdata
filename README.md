@@ -31,6 +31,8 @@ Current capabilities:
 - Local message search
 - JSONL export
 - Markdown export
+- Combined Codex + Claude scanning with `--source all`
+- File output with `--out`
 - Basic CLI test coverage
 
 Not included yet:
@@ -103,6 +105,14 @@ agentdata search --source claude "deploy"
 agentdata export --source claude --format markdown > claude-history.md
 ```
 
+Scan Codex and Claude together:
+
+```bash
+agentdata scan --source all
+agentdata search --source all "deploy"
+agentdata export --source all --format markdown --out agent-history.md
+```
+
 ## Commands
 
 ```text
@@ -110,12 +120,15 @@ agentdata version
 agentdata scan --path <file-or-directory>
 agentdata scan --source codex [--path <codex-sessions-directory>]
 agentdata scan --source claude [--path <claude-projects-directory>]
+agentdata scan --source all [--path codex=<dir>,claude=<dir>]
 agentdata search --path <file-or-directory> <query>
 agentdata search --source codex [--path <codex-sessions-directory>] <query>
 agentdata search --source claude [--path <claude-projects-directory>] <query>
+agentdata search --source all [--path codex=<dir>,claude=<dir>] <query>
 agentdata export --path <file-or-directory> --format jsonl|markdown
 agentdata export --source codex [--path <codex-sessions-directory>] --format jsonl|markdown
 agentdata export --source claude [--path <claude-projects-directory>] --format jsonl|markdown
+agentdata export --source all [--path codex=<dir>,claude=<dir>] --format jsonl|markdown [--out <file>]
 ```
 
 ## Data Model
