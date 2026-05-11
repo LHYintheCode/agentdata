@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"agentdata/internal/model"
+	"github.com/LHYintheCode/agentdata/internal/model"
 )
 
 func TestMessagesFindsCaseInsensitiveMatches(t *testing.T) {

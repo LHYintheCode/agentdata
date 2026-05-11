@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"agentdata/internal/model"
+	"github.com/LHYintheCode/agentdata/internal/model"
 )
 
 type JSONLRecord struct {

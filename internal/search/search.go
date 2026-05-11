@@ -3,7 +3,7 @@ package search
 import (
 	"strings"
 
-	"agentdata/internal/model"
+	"github.com/LHYintheCode/agentdata/internal/model"
 )
 
 type Result struct {

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"agentdata/internal/model"
+	"github.com/LHYintheCode/agentdata/internal/model"
 )
 
 type jsonlRecord struct {

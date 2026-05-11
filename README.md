@@ -1,85 +1,148 @@
 # Agentdata
 
-Agentdata is a local-first CLI for developers who want to search, normalize, and export their coding-agent chat history.
+[Chinese](README.zh-CN.md)
 
-Agentdata 是一个本地优先的 CLI 工具，用于帮助开发者检索、标准化和导出自己与编程智能体的聊天记录。
+Agentdata is a local-first CLI for searching, normalizing, and exporting coding-agent chat history.
 
-## English
+It is built for developers who use tools like Codex, Claude Code, Trae, Cursor, or Windsurf and want a portable local archive of their AI work history.
 
-### What It Does
+## Why
 
-Agentdata starts with explicit-path JSONL ingestion and a small canonical schema. It is designed for future adapters for Codex, Claude Code, Trae, and other agent tools without tying the core data model to any one vendor format.
+AI conversations are becoming part of the developer workflow: debugging sessions, design decisions, tool calls, failed attempts, and final fixes often live only inside one agent product.
 
-The long-term idea is to give users control over their own AI interaction data: search it locally, package it safely, and decide how it can be reused.
+Agentdata gives that history a local, inspectable format so you can:
 
-### Privacy Defaults
+- Search past agent conversations.
+- Export sessions as JSONL or Markdown.
+- Normalize records from different tools into one schema.
+- Keep sensitive data on your own machine by default.
+- Build future consent, redaction, and packaging workflows on top of a clear local format.
 
-- Local-only by default.
-- Read-only scanning.
-- No telemetry.
-- No cloud sync.
-- Exports go to stdout in the initial MVP.
-- Marketplace, resale, consent manifests, and redaction workflows are not enabled in the MVP.
+## Status
 
-### MVP Commands
+Agentdata is early-stage. The current version supports explicit-path JSONL input. Automatic discovery for Codex, Claude Code, Trae, Cursor, Windsurf, and other tools will be added after more real-machine validation.
 
-```powershell
-go run ./cmd/agentdata version
-go run ./cmd/agentdata scan --path ./samples
-go run ./cmd/agentdata search --path ./samples "deploy"
-go run ./cmd/agentdata export --path ./samples --format markdown
-```
-
-### Current Status
-
-Early-stage public CLI. The current implementation supports:
+Current capabilities:
 
 - JSONL parsing
 - Canonical session/message model
 - Local message search
 - JSONL export
 - Markdown export
-- Basic CLI tests
+- Basic CLI test coverage
 
-Automatic discovery of Codex, Claude Code, Trae, Cursor, Windsurf, and other local storage paths will be added after more real-machine validation.
+Not included yet:
 
-## 中文
+- Automatic source discovery
+- SQLite/FTS indexing
+- Secret redaction
+- Consent manifests
+- Cloud sync
+- Marketplace or resale workflows
 
-### 这个项目做什么
+## Install
 
-Agentdata 的目标是做一个本地优先的开发者 CLI，用来整理不同 AI 编程工具里的聊天记录和 agent 轨迹。
+From source:
 
-第一版从显式传入路径的 JSONL 文件开始，把不同来源的数据统一成一个简单稳定的会话/消息模型。后续可以逐步加入 Codex、Claude Code、Trae、Cursor、Windsurf 等工具的本地数据适配器。
-
-更长期的方向是让用户真正拥有自己的 AI 交互数据：可以本地检索，可以安全打包，也可以在明确授权后决定如何复用。
-
-### 隐私默认策略
-
-- 默认只在本地运行。
-- 扫描是只读的。
-- 不采集遥测数据。
-- 不做云同步。
-- MVP 阶段导出内容只输出到 stdout。
-- MVP 阶段不包含数据市场、转售、授权清单、脱敏工作流。
-
-### MVP 命令
-
-```powershell
-go run ./cmd/agentdata version
-go run ./cmd/agentdata scan --path ./samples
-go run ./cmd/agentdata search --path ./samples "deploy"
-go run ./cmd/agentdata export --path ./samples --format markdown
+```bash
+go install github.com/LHYintheCode/agentdata/cmd/agentdata@latest
 ```
 
-### 当前状态
+For local development:
 
-这是一个早期公开 CLI。目前已经支持：
+```bash
+git clone https://github.com/LHYintheCode/agentdata.git
+cd agentdata
+go test ./...
+go run ./cmd/agentdata version
+```
 
-- JSONL 解析
-- 统一的 session/message 数据模型
-- 本地消息搜索
-- JSONL 导出
-- Markdown 导出
-- 基础 CLI 测试
+## Quick Start
 
-Codex、Claude Code、Trae、Cursor、Windsurf 等工具的自动路径发现和格式适配，需要在更多真实机器上验证后再加入。
+Create a JSONL file:
+
+```jsonl
+{"source":"codex","project":"/path/to/project","session_id":"s1","timestamp":"2026-05-11T01:02:03Z","role":"user","content":"Deploy the CLI"}
+{"source":"codex","project":"/path/to/project","session_id":"s1","timestamp":"2026-05-11T01:03:04Z","role":"assistant","content":"Run go test ./..."}
+```
+
+Scan it:
+
+```bash
+agentdata scan --path ./samples
+```
+
+Search it:
+
+```bash
+agentdata search --path ./samples "deploy"
+```
+
+Export it:
+
+```bash
+agentdata export --path ./samples --format markdown
+agentdata export --path ./samples --format jsonl
+```
+
+## Commands
+
+```text
+agentdata version
+agentdata scan --path <file-or-directory>
+agentdata search --path <file-or-directory> <query>
+agentdata export --path <file-or-directory> --format jsonl|markdown
+```
+
+## Data Model
+
+Agentdata normalizes source records into sessions and messages:
+
+```json
+{
+  "id": "s1",
+  "source": "codex",
+  "project": "/path/to/project",
+  "messages": [
+    {
+      "role": "user",
+      "text": "Deploy the CLI",
+      "timestamp": "2026-05-11T01:02:03Z"
+    }
+  ]
+}
+```
+
+Source adapters should translate vendor-specific formats into this model. The core search and export layers should not depend on one agent vendor's internal storage format.
+
+## Privacy
+
+Agentdata is designed around local ownership:
+
+- It reads local files only when you pass a path.
+- It does not upload data.
+- It does not collect telemetry.
+- It does not modify source chat logs.
+- Exports are written to stdout in the current MVP.
+
+Future sharing workflows should require explicit consent, redaction, and a machine-readable manifest before any data leaves the user's machine.
+
+## Roadmap
+
+- Source adapters for Codex and Claude Code
+- Trae/Cursor/Windsurf local storage investigation
+- SQLite FTS indexing
+- Redaction rules for secrets and personal data
+- Export packages with manifest files
+- MCP adapter for agent hosts that cannot call the CLI directly
+
+## Development
+
+```bash
+go test ./...
+go run ./cmd/agentdata version
+```
+
+## License
+
+License has not been selected yet.

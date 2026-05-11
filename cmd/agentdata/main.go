@@ -9,10 +9,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"agentdata/internal/exporter"
-	"agentdata/internal/model"
-	"agentdata/internal/search"
-	"agentdata/internal/source"
+	"github.com/LHYintheCode/agentdata/internal/exporter"
+	"github.com/LHYintheCode/agentdata/internal/model"
+	"github.com/LHYintheCode/agentdata/internal/search"
+	"github.com/LHYintheCode/agentdata/internal/source"
 )
 
 const version = "agentdata 0.1.0"
