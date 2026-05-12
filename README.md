@@ -27,6 +27,8 @@ Current capabilities:
 - JSONL parsing
 - Codex rollout parsing from `~/.codex/sessions`
 - Claude Code transcript parsing from `~/.claude/projects`
+- OpenClaw `sessions.json` parsing from `~/.openclaw/agents`
+- Hermes JSONL transcript parsing from `~/.hermes/sessions`
 - Canonical session/message model
 - Local message search
 - JSONL export
@@ -39,6 +41,7 @@ Not included yet:
 
 - Automatic source discovery for non-Codex/Claude tools
 - SQLite/FTS indexing
+- Hermes `state.db` ingestion
 - Secret redaction
 - Consent manifests
 - Cloud sync
@@ -113,6 +116,13 @@ agentdata search --source all "deploy"
 agentdata export --source all --format markdown --out agent-history.md
 ```
 
+Scan OpenClaw or Hermes after installing those tools:
+
+```bash
+agentdata scan --source openclaw
+agentdata scan --source hermes
+```
+
 ## Commands
 
 ```text
@@ -120,15 +130,21 @@ agentdata version
 agentdata scan --path <file-or-directory>
 agentdata scan --source codex [--path <codex-sessions-directory>]
 agentdata scan --source claude [--path <claude-projects-directory>]
-agentdata scan --source all [--path codex=<dir>,claude=<dir>]
+agentdata scan --source openclaw [--path <openclaw-agents-directory>]
+agentdata scan --source hermes [--path <hermes-sessions-directory>]
+agentdata scan --source all [--path codex=<dir>,claude=<dir>,openclaw=<dir>,hermes=<dir>]
 agentdata search --path <file-or-directory> <query>
 agentdata search --source codex [--path <codex-sessions-directory>] <query>
 agentdata search --source claude [--path <claude-projects-directory>] <query>
-agentdata search --source all [--path codex=<dir>,claude=<dir>] <query>
+agentdata search --source openclaw [--path <openclaw-agents-directory>] <query>
+agentdata search --source hermes [--path <hermes-sessions-directory>] <query>
+agentdata search --source all [--path codex=<dir>,claude=<dir>,openclaw=<dir>,hermes=<dir>] <query>
 agentdata export --path <file-or-directory> --format jsonl|markdown
 agentdata export --source codex [--path <codex-sessions-directory>] --format jsonl|markdown
 agentdata export --source claude [--path <claude-projects-directory>] --format jsonl|markdown
-agentdata export --source all [--path codex=<dir>,claude=<dir>] --format jsonl|markdown [--out <file>]
+agentdata export --source openclaw [--path <openclaw-agents-directory>] --format jsonl|markdown
+agentdata export --source hermes [--path <hermes-sessions-directory>] --format jsonl|markdown
+agentdata export --source all [--path codex=<dir>,claude=<dir>,openclaw=<dir>,hermes=<dir>] --format jsonl|markdown [--out <file>]
 ```
 
 ## Data Model
@@ -168,6 +184,7 @@ Future sharing workflows should require explicit consent, redaction, and a machi
 
 - Source adapters for Codex and Claude Code
 - Trae/Cursor/Windsurf local storage investigation
+- Hermes SQLite `state.db` adapter
 - SQLite FTS indexing
 - Redaction rules for secrets and personal data
 - Export packages with manifest files

@@ -59,16 +59,49 @@ func TestRunScanClaudeSourceCountsSessionsAndMessages(t *testing.T) {
 	}
 }
 
-func TestRunScanAllSourceCountsCodexAndClaude(t *testing.T) {
-	codexDir := writeSampleCodexRollout(t)
-	claudeDir := writeSampleClaudeTranscript(t)
+func TestRunScanOpenClawSourceCountsSessionsAndMessages(t *testing.T) {
+	dir := writeSampleOpenClawSessions(t)
 	var stdout, stderr bytes.Buffer
 
-	code := Run([]string{"scan", "--source", "all", "--path", "codex=" + codexDir + ",claude=" + claudeDir}, &stdout, &stderr)
+	code := Run([]string{"scan", "--source", "openclaw", "--path", dir}, &stdout, &stderr)
 	if code != 0 {
 		t.Fatalf("code = %d, want 0; stderr=%s", code, stderr.String())
 	}
-	if !strings.Contains(stdout.String(), "sessions=2 messages=4") {
+	if !strings.Contains(stdout.String(), "sessions=1 messages=2") {
+		t.Fatalf("stdout = %q, want scan counts", stdout.String())
+	}
+}
+
+func TestRunScanHermesSourceCountsSessionsAndMessages(t *testing.T) {
+	dir := writeSampleHermesTranscript(t)
+	var stdout, stderr bytes.Buffer
+
+	code := Run([]string{"scan", "--source", "hermes", "--path", dir}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("code = %d, want 0; stderr=%s", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "sessions=1 messages=2") {
+		t.Fatalf("stdout = %q, want scan counts", stdout.String())
+	}
+}
+
+func TestRunScanAllSourceCountsCodexAndClaude(t *testing.T) {
+	codexDir := writeSampleCodexRollout(t)
+	claudeDir := writeSampleClaudeTranscript(t)
+	openClawDir := writeSampleOpenClawSessions(t)
+	hermesDir := writeSampleHermesTranscript(t)
+	var stdout, stderr bytes.Buffer
+
+	code := Run([]string{"scan", "--source", "all", "--path", strings.Join([]string{
+		"codex=" + codexDir,
+		"claude=" + claudeDir,
+		"openclaw=" + openClawDir,
+		"hermes=" + hermesDir,
+	}, ",")}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("code = %d, want 0; stderr=%s", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "sessions=4 messages=8") {
 		t.Fatalf("stdout = %q, want combined scan counts", stdout.String())
 	}
 }
@@ -199,6 +232,29 @@ func writeSampleJSONL(t *testing.T) string {
 		`{"source":"codex","project":"D:\\go_project","session_id":"s1","timestamp":"2026-05-11T01:03:04Z","role":"assistant","content":"Run go test ./..."}`,
 	}, "\n")
 	if err := os.WriteFile(filepath.Join(dir, "sample.jsonl"), []byte(data), 0o600); err != nil {
+		t.Fatalf("write sample: %v", err)
+	}
+	return dir
+}
+
+func writeSampleOpenClawSessions(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	data := `{"sessions":[{"id":"openclaw-session-1","workspace":"D:\\go_project","messages":[{"role":"user","content":"Find deploy notes","timestamp":"2026-05-12T01:02:00Z"},{"role":"assistant","content":"Found them in the release session.","timestamp":"2026-05-12T01:03:00Z"}]}]}`
+	if err := os.WriteFile(filepath.Join(dir, "sessions.json"), []byte(data), 0o600); err != nil {
+		t.Fatalf("write sample: %v", err)
+	}
+	return dir
+}
+
+func writeSampleHermesTranscript(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	data := strings.Join([]string{
+		`{"session_id":"hermes-session-1","project":"D:\\go_project","timestamp":"2026-05-12T01:02:00Z","role":"user","content":"Find deploy notes"}`,
+		`{"session_id":"hermes-session-1","project":"D:\\go_project","timestamp":"2026-05-12T01:03:00Z","role":"assistant","content":"Found them in the release session."}`,
+	}, "\n")
+	if err := os.WriteFile(filepath.Join(dir, "hermes-session-1.jsonl"), []byte(data), 0o600); err != nil {
 		t.Fatalf("write sample: %v", err)
 	}
 	return dir

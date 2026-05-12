@@ -27,6 +27,8 @@ Agentdata 还处在早期阶段。当前版本支持显式传入路径的 JSONL 
 - JSONL 解析
 - 从 `~/.codex/sessions` 解析 Codex rollout
 - 从 `~/.claude/projects` 解析 Claude Code transcript
+- 从 `~/.openclaw/agents` 解析 OpenClaw `sessions.json`
+- 从 `~/.hermes/sessions` 解析 Hermes JSONL transcript
 - 统一的 session/message 数据模型
 - 本地消息搜索
 - JSONL 导出
@@ -39,6 +41,7 @@ Agentdata 还处在早期阶段。当前版本支持显式传入路径的 JSONL 
 
 - 非 Codex/Claude 工具的自动发现
 - SQLite/FTS 索引
+- Hermes `state.db` 读取
 - secret 脱敏
 - 授权 manifest
 - 云同步
@@ -113,6 +116,13 @@ agentdata search --source all "deploy"
 agentdata export --source all --format markdown --out agent-history.md
 ```
 
+安装 OpenClaw 或 Hermes 后也可以扫描：
+
+```bash
+agentdata scan --source openclaw
+agentdata scan --source hermes
+```
+
 ## 命令
 
 ```text
@@ -120,15 +130,21 @@ agentdata version
 agentdata scan --path <file-or-directory>
 agentdata scan --source codex [--path <codex-sessions-directory>]
 agentdata scan --source claude [--path <claude-projects-directory>]
-agentdata scan --source all [--path codex=<dir>,claude=<dir>]
+agentdata scan --source openclaw [--path <openclaw-agents-directory>]
+agentdata scan --source hermes [--path <hermes-sessions-directory>]
+agentdata scan --source all [--path codex=<dir>,claude=<dir>,openclaw=<dir>,hermes=<dir>]
 agentdata search --path <file-or-directory> <query>
 agentdata search --source codex [--path <codex-sessions-directory>] <query>
 agentdata search --source claude [--path <claude-projects-directory>] <query>
-agentdata search --source all [--path codex=<dir>,claude=<dir>] <query>
+agentdata search --source openclaw [--path <openclaw-agents-directory>] <query>
+agentdata search --source hermes [--path <hermes-sessions-directory>] <query>
+agentdata search --source all [--path codex=<dir>,claude=<dir>,openclaw=<dir>,hermes=<dir>] <query>
 agentdata export --path <file-or-directory> --format jsonl|markdown
 agentdata export --source codex [--path <codex-sessions-directory>] --format jsonl|markdown
 agentdata export --source claude [--path <claude-projects-directory>] --format jsonl|markdown
-agentdata export --source all [--path codex=<dir>,claude=<dir>] --format jsonl|markdown [--out <file>]
+agentdata export --source openclaw [--path <openclaw-agents-directory>] --format jsonl|markdown
+agentdata export --source hermes [--path <hermes-sessions-directory>] --format jsonl|markdown
+agentdata export --source all [--path codex=<dir>,claude=<dir>,openclaw=<dir>,hermes=<dir>] --format jsonl|markdown [--out <file>]
 ```
 
 ## 数据模型
@@ -167,6 +183,7 @@ Agentdata 的设计基线是本地所有权：
 ## 路线图
 
 - Trae/Cursor/Windsurf 本地存储调研
+- Hermes SQLite `state.db` adapter
 - SQLite FTS 索引
 - secret 和个人信息脱敏规则
 - 带 manifest 的导出数据包

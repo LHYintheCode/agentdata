@@ -47,7 +47,7 @@ func runScan(args []string, stdout io.Writer, stderr io.Writer) int {
 	flags := flag.NewFlagSet("scan", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	path := flags.String("path", "", "file or directory containing JSONL records")
-	sourceName := flags.String("source", "jsonl", "input source: jsonl, codex, claude, or all")
+	sourceName := flags.String("source", "jsonl", "input source: jsonl, codex, claude, openclaw, hermes, or all")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
@@ -65,7 +65,7 @@ func runSearch(args []string, stdout io.Writer, stderr io.Writer) int {
 	flags := flag.NewFlagSet("search", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	path := flags.String("path", "", "file or directory containing JSONL records")
-	sourceName := flags.String("source", "jsonl", "input source: jsonl, codex, claude, or all")
+	sourceName := flags.String("source", "jsonl", "input source: jsonl, codex, claude, openclaw, hermes, or all")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
@@ -90,7 +90,7 @@ func runExport(args []string, stdout io.Writer, stderr io.Writer) int {
 	flags := flag.NewFlagSet("export", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	path := flags.String("path", "", "file or directory containing JSONL records")
-	sourceName := flags.String("source", "jsonl", "input source: jsonl, codex, claude, or all")
+	sourceName := flags.String("source", "jsonl", "input source: jsonl, codex, claude, openclaw, hermes, or all")
 	format := flags.String("format", "jsonl", "export format: jsonl or markdown")
 	outPath := flags.String("out", "", "write export output to file instead of stdout")
 	if err := flags.Parse(args); err != nil {
@@ -171,8 +171,15 @@ func loadAllSessions(path string) ([]model.Session, error) {
 	}
 
 	allSessions := make([]model.Session, 0)
-	for _, sourceName := range []string{"codex", "claude"} {
-		sessions, err := loadSessions(sourceName, sourcePaths[sourceName])
+	for _, sourceName := range allSourceNames() {
+		sourcePath := sourcePaths[sourceName]
+		if _, err := os.Stat(sourcePath); err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return nil, fmt.Errorf("%s: %w", sourceName, err)
+		}
+		sessions, err := loadSessions(sourceName, sourcePath)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", sourceName, err)
 		}
@@ -191,7 +198,20 @@ func resolveAllSourcePaths(path string) (map[string]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		return map[string]string{"codex": codexPath, "claude": claudePath}, nil
+		openClawPath, err := resolveSourcePath("openclaw", "")
+		if err != nil {
+			return nil, err
+		}
+		hermesPath, err := resolveSourcePath("hermes", "")
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{
+			"codex":    codexPath,
+			"claude":   claudePath,
+			"openclaw": openClawPath,
+			"hermes":   hermesPath,
+		}, nil
 	}
 
 	paths := make(map[string]string)
@@ -202,7 +222,7 @@ func resolveAllSourcePaths(path string) (map[string]string, error) {
 		}
 		key = strings.TrimSpace(key)
 		value = strings.TrimSpace(value)
-		if key != "codex" && key != "claude" {
+		if !isKnownAggregatedSource(key) {
 			return nil, fmt.Errorf("unsupported source in --path: %s", key)
 		}
 		if value == "" {
@@ -210,7 +230,7 @@ func resolveAllSourcePaths(path string) (map[string]string, error) {
 		}
 		paths[key] = value
 	}
-	for _, sourceName := range []string{"codex", "claude"} {
+	for _, sourceName := range allSourceNames() {
 		if _, ok := paths[sourceName]; !ok {
 			resolved, err := resolveSourcePath(sourceName, "")
 			if err != nil {
@@ -240,6 +260,20 @@ func resolveSourcePath(sourceName string, path string) (string, error) {
 		}
 		return filepath.Join(home, ".claude", "projects"), nil
 	}
+	if sourceName == "openclaw" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		return filepath.Join(home, ".openclaw", "agents"), nil
+	}
+	if sourceName == "hermes" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		return filepath.Join(home, ".hermes", "sessions"), nil
+	}
 	return "", errors.New("--path is required")
 }
 
@@ -258,6 +292,17 @@ func parseSessions(sourceName string, reader io.Reader, file string) ([]model.Se
 		return []model.Session{session}, nil
 	case "claude":
 		session, err := source.ParseClaudeTranscript(reader, file)
+		if err != nil {
+			return nil, err
+		}
+		if len(session.Messages) == 0 {
+			return nil, nil
+		}
+		return []model.Session{session}, nil
+	case "openclaw":
+		return source.ParseOpenClawSessions(reader, file)
+	case "hermes":
+		session, err := source.ParseHermesTranscript(reader, file)
 		if err != nil {
 			return nil, err
 		}
@@ -301,9 +346,26 @@ func matchesSourceFile(path string, sourceName string) bool {
 		return strings.HasPrefix(filepath.Base(path), "rollout-") && strings.EqualFold(filepath.Ext(path), ".jsonl")
 	case "claude":
 		return source.IsClaudeTranscriptPath(path)
+	case "openclaw":
+		return source.IsOpenClawSessionsPath(path)
+	case "hermes":
+		return strings.EqualFold(filepath.Ext(path), ".jsonl")
 	default:
 		return strings.EqualFold(filepath.Ext(path), ".jsonl")
 	}
+}
+
+func allSourceNames() []string {
+	return []string{"codex", "claude", "openclaw", "hermes"}
+}
+
+func isKnownAggregatedSource(sourceName string) bool {
+	for _, known := range allSourceNames() {
+		if sourceName == known {
+			return true
+		}
+	}
+	return false
 }
 
 func countMessages(sessions []model.Session) int {
